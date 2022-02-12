@@ -1,9 +1,6 @@
 package main;
 
-import main.metamodel.Condition;
-import main.metamodel.Machine;
-import main.metamodel.State;
-import main.metamodel.Transition;
+import main.metamodel.*;
 
 import java.util.List;
 import java.util.Map;
@@ -31,42 +28,23 @@ public class MachineInterpreter {
 		Transition validTransition = null;
 		boolean haveFoundValid = false;
 		for (Transition transition: ts) {
-			if (haveFoundValid){
+			if (haveFoundValid) {
 				break;
 			}
-			if (!transition.isConditional()){
+			if (!transition.isConditional()) {
 				validTransition = transition;
 				break;
-			}
-			else {
-				switch (transition.getCondition()){
-					case EQUALS:
-						if(runtimeMachine.variables.
-								get(transition.getConditionVariableName())
-								.equals(transition.getConditionValue())){
-							validTransition = transition;
-							haveFoundValid = true;
-						}
-						break;
-					case GREATERTHAN:
-						if(runtimeMachine.variables.
-								get(transition.getConditionVariableName())
-								> transition.getConditionValue()){
-							validTransition = transition;
-							haveFoundValid = true;
-						}
-						break;
-					case LESSTHAN:
-						if(runtimeMachine.variables.
-								get(transition.getConditionVariableName())
-								< transition.getConditionValue()){
-							validTransition = transition;
-							haveFoundValid = true;
-						}
-						break;
+			} else {
+				int comparedValue = runtimeMachine.variables.
+						get(transition.getConditionVariableName()).compareTo(transition.getConditionValue());
+				if ((comparedValue < 0 && transition.getCondition() == Condition.LESSTHAN)
+						|| (comparedValue == 0 && transition.getCondition() == Condition.EQUALS)
+						|| (comparedValue > 0 && transition.getCondition() == Condition.GREATERTHAN)) {
+
+					validTransition = transition;
+					haveFoundValid = true;
 				}
 			}
-
 		}
 
 		if (validTransition == null){
@@ -77,17 +55,9 @@ public class MachineInterpreter {
 		//Handle arithmetic
 		if (validTransition.hasOperation()){
 			Map<String, Integer> variables = runtimeMachine.variables;
-			switch (validTransition.getOperation()){
-				case SET:
-					variables.put(validTransition.getOperationVariableName(), validTransition.getOperationValue());
-					break;
-				case INCREMENT:
-					variables.put(validTransition.getOperationVariableName(), variables.get(validTransition.getOperationVariableName()) + 1);
-					break;
-				case DECREMENT:
-					variables.put(validTransition.getOperationVariableName(), variables.get(validTransition.getOperationVariableName()) - 1);
-					break;
-			}
+			int value = validTransition.getOperation() == Operation.SET ? validTransition.getOperationValue() :
+					variables.get(validTransition.getOperationVariableName()) + (validTransition.getOperation() == Operation.INCREMENT ? 1 : -1);
+			variables.put(validTransition.getOperationVariableName(), value);
 		}
 
 		runtimeMachine.setCurrentState(runtimeMachine.getState(validTransition.getTarget()));
